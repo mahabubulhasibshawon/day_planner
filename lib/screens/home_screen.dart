@@ -81,7 +81,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _showAddTaskDialog(BuildContext context, WidgetRef ref) {
-    TextEditingController taskController = TextEditingController();
+    TextEditingController titleController = TextEditingController();
     TextEditingController detailsController = TextEditingController();
 
     showDialog(
@@ -92,8 +92,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
-              controller: taskController,
-              decoration: InputDecoration(labelText: 'Task Name'),
+              controller: titleController,
+              decoration: InputDecoration(labelText: 'Task Title'),
             ),
             TextField(
               controller: detailsController,
@@ -109,10 +109,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           TextButton(
             onPressed: () {
-              if (taskController.text.isNotEmpty) {
+              if (titleController.text.isNotEmpty) {
                 ref.read(taskProvider.notifier).addTask(
                     DateFormat('yyyy-MM-dd').format(selectedDate),
-                    '${taskController.text} - ${detailsController.text}');
+                    titleController.text,
+                    detailsController.text);
               }
               Navigator.pop(context);
             },
@@ -122,4 +123,5 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
+
 }

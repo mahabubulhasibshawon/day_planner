@@ -1,7 +1,7 @@
-// widgets/task_list.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/task_provider.dart';
+import '../models/task_model.dart';
 import 'package:intl/intl.dart';
 
 class TaskList extends ConsumerWidget {
@@ -15,16 +15,19 @@ class TaskList extends ConsumerWidget {
     return ListView.builder(
       itemCount: tasks.length,
       itemBuilder: (context, index) {
+        final task = tasks[index];
+
         return Card(
           child: ListTile(
-            title: Text(tasks[index]),
+            title: Text(task.title),      // ✅ Show task title
+            subtitle: Text(task.details), // ✅ Show task details
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
                   icon: Icon(Icons.edit),
                   onPressed: () {
-                    _showEditTaskDialog(context, ref, index, tasks[index]);
+                    _showEditTaskDialog(context, ref, index, task);
                   },
                 ),
                 IconButton(
@@ -41,20 +44,43 @@ class TaskList extends ConsumerWidget {
     );
   }
 
-  void _showEditTaskDialog(BuildContext context, WidgetRef ref, int index, String currentTask) {
-    TextEditingController taskController = TextEditingController(text: currentTask);
+  void _showEditTaskDialog(BuildContext context, WidgetRef ref, int index, Task task) {
+    TextEditingController titleController = TextEditingController(text: task.title);
+    TextEditingController detailsController = TextEditingController(text: task.details);
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Edit Task'),
-        content: TextField(
-          controller: taskController,
-          decoration: InputDecoration(labelText: 'Task Name'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration: InputDecoration(labelText: 'Task Title'),
+            ),
+            TextField(
+              controller: detailsController,
+              decoration: InputDecoration(labelText: 'Task Details'),
+            ),
+          ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel')),
-          TextButton(onPressed: () { ref.read(taskProvider.notifier).updateTask(DateFormat('yyyy-MM-dd').format(selectedDate), index, taskController.text); Navigator.pop(context); }, child: Text('Update')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              ref.read(taskProvider.notifier).updateTask(
+                  DateFormat('yyyy-MM-dd').format(selectedDate),
+                  index,
+                  titleController.text,
+                  detailsController.text);
+              Navigator.pop(context);
+            },
+            child: Text('Update'),
+          ),
         ],
       ),
     );
