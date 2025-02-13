@@ -1,5 +1,7 @@
+import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:offline_day_planner/models/task_model.dart';
 import '../providers/task_provider.dart';
 import '../widgets/task_list.dart';
 import 'package:intl/intl.dart';
@@ -11,6 +13,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   DateTime selectedDate = DateTime.now();
+  TimeOfDay selectedTime = TimeOfDay(hour: 9, minute: 0); // Default time for the alarm
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +27,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             _buildWeekCalendar(),
             Row(
               children: [
-                Text('Plans ', style: TextStyle(fontSize: 26),),
+                Text('Plans ', style: TextStyle(fontSize: 26)),
               ],
             ),
             Expanded(child: TaskList(selectedDate)),
@@ -81,8 +84,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _showAddTaskDialog(BuildContext context, WidgetRef ref) {
-    TextEditingController titleController = TextEditingController();
+    TextEditingController taskController = TextEditingController();
     TextEditingController detailsController = TextEditingController();
+
+    // Add DateTime picker for alarm time
+    DateTime selectedAlarmTime = DateTime.now();
 
     showDialog(
       context: context,
@@ -92,13 +98,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
-              controller: titleController,
-              decoration: InputDecoration(labelText: 'Task Title'),
+              controller: taskController,
+              decoration: InputDecoration(labelText: 'Task Name'),
             ),
             TextField(
               controller: detailsController,
               maxLines: 3,
               decoration: InputDecoration(labelText: 'Task Details'),
+            ),
+            // Add Time Picker for Alarm Time
+            ListTile(
+              title: Text('Set Alarm Time'),
+              trailing: Text(DateFormat('hh:mm a').format(selectedAlarmTime)),
+              onTap: () async {
+                final time = await showTimePicker(
+                  context: context,
+                  initialTime: TimeOfDay.fromDateTime(selectedAlarmTime),
+                );
+                if (time != null) {
+                  setState(() {
+                    selectedAlarmTime = DateTime(
+                      selectedAlarmTime.year,
+                      selectedAlarmTime.month,
+                      selectedAlarmTime.day,
+                      time.hour,
+                      time.minute,
+                    );
+                  });
+                }
+              },
             ),
           ],
         ),
@@ -109,11 +137,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           TextButton(
             onPressed: () {
-              if (titleController.text.isNotEmpty) {
+              if (taskController.text.isNotEmpty) {
+                // Create a Task object with alarm time
+                final newTask = Task(
+                  title: taskController.text,
+                  alarmTime: selectedAlarmTime,
+                );
+
+                // Pass the Task object to addTask method
                 ref.read(taskProvider.notifier).addTask(
                     DateFormat('yyyy-MM-dd').format(selectedDate),
-                    titleController.text,
-                    detailsController.text);
+                    newTask
+                );
+
+                _scheduleNotification(newTask);  // Pass the Task to the notification scheduler
               }
               Navigator.pop(context);
             },
@@ -121,6 +158,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ],
       ),
+    );
+  }
+
+
+  void _scheduleNotification(Task task) {
+    if (task.alarmTime == null) return; // If no alarm time is set, do nothing
+
+    AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: task.id,
+        channelKey: 'basic_channel',
+        title: 'Reminder: ${task.title}',
+        body: 'Don\'t forget to do your task!',
+        notificationLayout: NotificationLayout.Default,
+      ),
+      schedule: NotificationCalendar.fromDate(date: task.alarmTime!),
     );
   }
 

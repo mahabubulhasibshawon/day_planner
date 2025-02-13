@@ -1,28 +1,27 @@
-import 'package:hive/hive.dart';
+import 'dart:math';
 
-part 'task_model.g.dart';
-
-@HiveType(typeId: 0)
 class Task {
-  @HiveField(0)
+  final int id;
   final String title;
+  final DateTime? alarmTime;
 
-  @HiveField(1)
-  final String details;
+  // Constructor with an optional alarmTime
+  Task({required this.title, this.alarmTime}) : id = Random().nextInt(100000);
 
-  Task({required this.title, required this.details});
+  // Convert Task to a Map for Hive storage
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'title': title,
+      'alarmTime': alarmTime?.toIso8601String(),
+    };
+  }
 
-  // Convert Task object to Map (if needed)
-  Map<String, dynamic> toJson() => {
-    'title': title,
-    'details': details,
-  };
-
-  // Convert Map to Task object
-  factory Task.fromJson(Map<String, dynamic> json) {
+  // Create a Task from a Map (Hive data format)
+  factory Task.fromMap(Map<String, dynamic> map) {
     return Task(
-      title: json['title'],
-      details: json['details'],
+      title: map['title'],
+      alarmTime: map['alarmTime'] != null ? DateTime.parse(map['alarmTime']) : null,
     );
   }
 }

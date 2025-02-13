@@ -1,13 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
-import 'dart:convert';
-
+import 'package:awesome_notifications/awesome_notifications.dart';
 import '../models/task_model.dart';
 
-
-final taskProvider =
-StateNotifierProvider<TaskNotifier, Map<String, List<Task>>>(
-        (ref) => TaskNotifier());
+final taskProvider = StateNotifierProvider<TaskNotifier, Map<String, List<Task>>>(
+      (ref) => TaskNotifier(),
+);
 
 class TaskNotifier extends StateNotifier<Map<String, List<Task>>> {
   final Box _taskBox = Hive.box('tasks');
@@ -18,61 +16,31 @@ class TaskNotifier extends StateNotifier<Map<String, List<Task>>> {
 
   void _loadTasks() {
     final tasks = _taskBox.get('tasks', defaultValue: {});
-    if (tasks != null && tasks is Map<String, dynamic>) {
-      state = Map<String, List<Task>>.from(
-        tasks.map((key, value) {
-          // Ensure each value is decoded correctly as a List<Task>
-          return MapEntry(
-            key,
-            (value as List<dynamic>).map((task) {
-              // Assuming each item is a Map
-              if (task is Map<String, dynamic>) {
-                return Task.fromJson(task);
-              } else {
-                return Task(title: '', details: ''); // Fallback if task is not a Map
-              }
-            }).toList(),
-          );
-        }),
-      );
-    }
+    state = Map<String, List<Task>>.from(tasks.map((key, value) {
+      return MapEntry(key, List<Task>.from(value.map((task) => Task.fromMap(task))));
+    }));
   }
 
-
-  void addTask(String date, String title, String details) {
-    final newTask = Task(title: title, details: details);
+  void addTask(String date, Task task) {
+    final taskList = state[date] ?? [];
     state = {
       ...state,
-      date: [...(state[date] ?? []), newTask]
+      date: [...taskList, task],
     };
-    _saveTasks();
+    _taskBox.put('tasks', state);
   }
 
-  void updateTask(String date, int index, String newTitle, String newDetails) {
-    final updatedTask = Task(title: newTitle, details: newDetails);
-    state = {
-      ...state,
-      date: List.from(state[date] ?? [])..[index] = updatedTask
-    };
-    _saveTasks();
+  void updateTask(String date, int index, Task updatedTask) {
+    final taskList = state[date] ?? [];
+    taskList[index] = updatedTask;
+    state = {...state, date: List.from(taskList)};
+    _taskBox.put('tasks', state);
   }
 
   void removeTask(String date, int index) {
-    state = {
-      ...state,
-      date: List.from(state[date] ?? [])..removeAt(index)
-    };
-    _saveTasks();
+    final taskList = state[date] ?? [];
+    taskList.removeAt(index);
+    state = {...state, date: List.from(taskList)};
+    _taskBox.put('tasks', state);
   }
-
-  void _saveTasks() {
-    _taskBox.put(
-      'tasks',
-      state.map((key, value) => MapEntry(
-        key,
-        value.map((task) => task.toJson()).toList(),  // Ensure each task is serialized as a Map
-      )),
-    );
-  }
-
 }
