@@ -1,46 +1,42 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive/hive.dart';
-import 'package:awesome_notifications/awesome_notifications.dart';
-import '../models/task_model.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import '../models/task.dart';
 
-final taskProvider = StateNotifierProvider<TaskNotifier, Map<String, List<Task>>>(
-      (ref) => TaskNotifier(),
-);
+final taskBoxProvider = Provider<Box<Task>>((ref) {
+  throw UnimplementedError();
+});
 
-class TaskNotifier extends StateNotifier<Map<String, List<Task>>> {
-  final Box _taskBox = Hive.box('tasks');
+final taskListProvider = StateNotifierProvider<TaskNotifier, List<Task>>((ref) {
+  final box = ref.watch(taskBoxProvider);
+  return TaskNotifier(box);
+});
 
-  TaskNotifier() : super({}) {
-    _loadTasks();
+class TaskNotifier extends StateNotifier<List<Task>> {
+  final Box<Task> _box;
+
+  TaskNotifier(this._box) : super(_box.values.toList());
+
+  Future<void> addTask(Task task) async {
+    await _box.put(task.id, task);
+    state = _box.values.toList();
   }
 
-  void _loadTasks() {
-    final tasks = _taskBox.get('tasks', defaultValue: {});
-    state = Map<String, List<Task>>.from(tasks.map((key, value) {
-      return MapEntry(key, List<Task>.from(value.map((task) => Task.fromMap(task))));
-    }));
+  Future<void> updateTask(Task task) async {
+    await _box.put(task.id, task);
+    state = _box.values.toList();
   }
 
-  void addTask(String date, Task task) {
-    final taskList = state[date] ?? [];
-    state = {
-      ...state,
-      date: [...taskList, task],
-    };
-    _taskBox.put('tasks', state);
+  Future<void> deleteTask(String id) async {
+    await _box.delete(id);
+    state = _box.values.toList();
   }
 
-  void updateTask(String date, int index, Task updatedTask) {
-    final taskList = state[date] ?? [];
-    taskList[index] = updatedTask;
-    state = {...state, date: List.from(taskList)};
-    _taskBox.put('tasks', state);
-  }
-
-  void removeTask(String date, int index) {
-    final taskList = state[date] ?? [];
-    taskList.removeAt(index);
-    state = {...state, date: List.from(taskList)};
-    _taskBox.put('tasks', state);
+  Future<void> toggleTaskCompletion(String id) async {
+    final task = _box.get(id);
+    if (task != null) {
+      task.isCompleted = !task.isCompleted;
+      await _box.put(id, task);
+      state = _box.values.toList();
+    }
   }
 }
